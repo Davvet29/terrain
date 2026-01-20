@@ -5,13 +5,14 @@ using UnityEngine;
 public class TerrainScript : MonoBehaviour
 {
     private Terrain terrain;
+    [SerializeField] int resolution;
     
     
     public void Regenerate()
     {
-        if (terrain == null) terrain = GetComponent<Terrain>();
+        if (terrain == null) terrain = new Terrain();
 
-        Mesh mesh = terrain.Regenerate();
+        Mesh mesh = terrain.Regenerate(resolution);
         mesh.name = "TerrainMesh";
         GetComponent<MeshFilter>().mesh = mesh;
     }

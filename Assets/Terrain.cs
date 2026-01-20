@@ -4,15 +4,15 @@ using Unity.Mathematics;
 using UnityEngine;
 
 
-public class Terrain : MonoBehaviour
+public class Terrain
 {
-    [SerializeField] int resolution;
+
     int width;
-    [SerializeField] List<Vector3> vertList;
+    [SerializeField] List<Vector3> vertList = new();
     [SerializeField] Vector2[] newUV;
-    [SerializeField] List<int> triangleList;
+    [SerializeField] List<int> triangleList = new();
     
-    public Mesh Regenerate()
+    public Mesh Regenerate(int resolution)
     {
         triangleList.Clear();
         vertList.Clear();
