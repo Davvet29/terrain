@@ -4,6 +4,7 @@ using System.Linq;
 using Unity.Mathematics;
 using Unity.VisualScripting;
 using UnityEngine;
+using Color = UnityEngine.Color;
 
 
 public class Terrain
@@ -16,103 +17,103 @@ public class Terrain
     [SerializeField] List<int> triangleList = new();
 
 
-    
-    public Mesh Regenerate(int resolution, float size, bool flipTriangles, Texture2D noiseMap, float height, bool randomGen, float noiseSizeDenominator, Vector2 noiseMapSize)
+
+
+    public Mesh Regenerate(int resolution, float size, bool flipTriangles, Texture2D noiseMap, float height, bool randomGen, float noiseSizeDenominator, Vector2 noiseMapSize, List<UnityEngine.Color> colors)
     {
         triangleList.Clear();
         vertList.Clear();
-        UVList.Clear(); 
+        UVList.Clear();
 
-        verticalSquares = (int)Mathf.Sqrt(resolution) + 1;
+        verticalSquares = resolution + 1;
         Mesh mesh = new Mesh
         {
-            };
+        };
         CalculateVerts(size);
         CalculateTriangles(flipTriangles);
-        ApplyElevation(noiseMap , height, randomGen, noiseSizeDenominator, noiseMapSize);
+        ApplyElevation(noiseMap, height, randomGen, noiseSizeDenominator, noiseMapSize);
+        mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
         mesh.SetVertices(vertList);
         mesh.SetTriangles(triangleList, 0);
         mesh.RecalculateNormals();
-        SetColor(mesh);
+        SetColor(mesh, colors);
         ApplyUV(mesh);
         return mesh;
     }
 
     private void CalculateVerts(float size)
     {
-        float pointDistance = size/((float)(verticalSquares-1)/2);
-        Debug.Log(pointDistance);
+        float pointDistance = size / ((float)(verticalSquares - 1) / 2);
         float startPointX = -size;
         float startPointZ = size;
         for (int i = 0; i < verticalSquares; i++)
         {
             for (int j = 0; j < verticalSquares; j++)
             {
-                 vertList.Add(new Vector3(startPointX + (j * pointDistance), 0, startPointZ - (i * pointDistance)));
+                vertList.Add(new Vector3(startPointX + (j * pointDistance), 0, startPointZ - (i * pointDistance)));
             }
         }
     }
 
     private void CalculateTriangles(bool flipTriangles)
     {
-        for (int i = 0; i < verticalSquares-1; i++)
+        for (int i = 0; i < verticalSquares - 1; i++)
         {
-            for (int j = 0; j < verticalSquares-1; j++)
+            for (int j = 0; j < verticalSquares - 1; j++)
             {
                 if (!flipTriangles)
                 {
-                    triangleList.Add(((i*verticalSquares)+j));
-                    triangleList.Add(((i*verticalSquares)+j)+1);
-                    triangleList.Add(((i*verticalSquares)+j) + verticalSquares+1);
+                    triangleList.Add(((i * verticalSquares) + j));
+                    triangleList.Add(((i * verticalSquares) + j) + 1);
+                    triangleList.Add(((i * verticalSquares) + j) + verticalSquares + 1);
 
-                    triangleList.Add(((i*verticalSquares)+j));
-                    triangleList.Add(((i*verticalSquares)+j) + verticalSquares+1);
-                    triangleList.Add(((i*verticalSquares)+j) + verticalSquares);
+                    triangleList.Add(((i * verticalSquares) + j));
+                    triangleList.Add(((i * verticalSquares) + j) + verticalSquares + 1);
+                    triangleList.Add(((i * verticalSquares) + j) + verticalSquares);
                 }
                 else
                 {
-                    triangleList.Add(((i*verticalSquares)+j));
-                    triangleList.Add(((i*verticalSquares)+j)+1);
-                    triangleList.Add(((i*verticalSquares)+j) + verticalSquares);
+                    triangleList.Add(((i * verticalSquares) + j));
+                    triangleList.Add(((i * verticalSquares) + j) + 1);
+                    triangleList.Add(((i * verticalSquares) + j) + verticalSquares);
 
-                    triangleList.Add(((i*verticalSquares)+j)+1);
-                    triangleList.Add(((i*verticalSquares)+j) + verticalSquares+1);
-                    triangleList.Add(((i*verticalSquares)+j) + verticalSquares);
+                    triangleList.Add(((i * verticalSquares) + j) + 1);
+                    triangleList.Add(((i * verticalSquares) + j) + verticalSquares + 1);
+                    triangleList.Add(((i * verticalSquares) + j) + verticalSquares);
 
 
                 }
 
             }
         }
-        
+
     }
 
     public void ApplyUV(Mesh mesh)
     {
-        for (int i = 0; i  < vertList.Count(); i++)
+        for (int i = 0; i < vertList.Count(); i++)
         {
             UVList.Add(new Vector2(vertList[i].x, vertList[i].z));
         }
         mesh.uv = UVList.ToArray();
     }
 
-    private void SetColor(Mesh mesh)
+    private void SetColor(Mesh mesh, List<UnityEngine.Color> heightColors)
     {
-        List<UnityEngine.Color> colors = new();
-
-        for (int i = 0; i  < vertList.Count(); i++)
+        List<Color> colors = new();
+        for (int i = 0; i < vertList.Count(); i++)
         {
-            if(vertList[i].y < 3)
+            if (vertList[i].y < 3)
             {
-                colors.Add(UnityEngine.Color.green);
+                colors.Add(heightColors[0]);
             }
-            else if(vertList[i].y > 3 && vertList[i].y < 6)
+            else if (vertList[i].y > 3 && vertList[i].y < 6)
             {
-                colors.Add(UnityEngine.Color.yellow);
+                colors.Add(heightColors[1]);
             }
             else
             {
-                colors.Add(UnityEngine.Color.red);
+                colors.Add(heightColors[2]);
             }
         }
         mesh.SetColors(colors);
@@ -120,25 +121,22 @@ public class Terrain
 
     private void ApplyElevation(Texture2D noiseMap, float height, bool randomTerrain, float noiseSizeDenominator, Vector2 noisePosition)
     {
-    
-        int mapSize = (int)noiseMap.Size().x;
         int vertWidth = (int)Mathf.Sqrt(vertList.Count());
         float pixelColor;
-        float pointDistance = mapSize / vertWidth;
 
         for (int i = 0; i < vertWidth; i++)
         {
             for (int j = 0; j < vertWidth; j++)
             {
-                if(randomTerrain)
+                float u = (float)j / (vertWidth - 1);
+                float v = (float)i / (vertWidth - 1);
+                if (randomTerrain)
                 {
-                    pointDistance = 1 / (float)noiseSizeDenominator;
-                    pixelColor = Mathf.PerlinNoise(pointDistance * j, pointDistance * i);
-                    UnityEngine.Debug.Log(pixelColor + "pixel colour");
+                    pixelColor = Mathf.PerlinNoise(u, v);
                 }
                 else
                 {
-                    pixelColor = noiseMap.GetPixel((int)pointDistance * j, (int)pointDistance * i).grayscale;
+                    pixelColor = noiseMap.GetPixelBilinear(u, v).grayscale;
                 }
                 float setHeight = pixelColor * height;
                 vertList[CoordinateToVert(i, j)] = new Vector3(vertList[CoordinateToVert(i, j)].x, setHeight, vertList[CoordinateToVert(i, j)].z);
