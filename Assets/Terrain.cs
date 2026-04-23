@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using Unity.Mathematics;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -19,7 +18,7 @@ public class Terrain
 
 
 
-    public Mesh Regenerate(int resolution, float size, bool flipTriangles, Texture2D noiseMap, float height, bool randomGen, float noiseSizeDenominator, Vector2 noiseMapSize, List<UnityEngine.Color> colors)
+    public Mesh Regenerate(int resolution, float size, bool flipTriangles, Texture2D noiseMap, float height, bool randomGen, float noiseSizeDenominator, Vector2 noiseMapSize, List<UnityEngine.Color> colors, float textureSize, float midHeight, float highHeight)
     {
         triangleList.Clear();
         vertList.Clear();
@@ -36,14 +35,14 @@ public class Terrain
         mesh.SetVertices(vertList);
         mesh.SetTriangles(triangleList, 0);
         mesh.RecalculateNormals();
-        SetColor(mesh, colors);
-        ApplyUV(mesh);
+        SetColor(mesh, colors, midHeight, highHeight);
+        ApplyUV(mesh, textureSize);
         return mesh;
     }
 
     private void CalculateVerts(float size)
     {
-        float pointDistance = size / ((float)(verticalSquares - 1) / 2);
+        float pointDistance = (2 * size) / (verticalSquares - 1);
         float startPointX = -size;
         float startPointZ = size;
         for (int i = 0; i < verticalSquares; i++)
@@ -89,25 +88,25 @@ public class Terrain
 
     }
 
-    public void ApplyUV(Mesh mesh)
+    public void ApplyUV(Mesh mesh, float textureSize)
     {
-        for (int i = 0; i < vertList.Count(); i++)
+        for (int i = 0; i < vertList.Count; i++)
         {
-            UVList.Add(new Vector2(vertList[i].x, vertList[i].z));
+            UVList.Add(new Vector2(vertList[i].x / textureSize, vertList[i].z / textureSize));
         }
         mesh.uv = UVList.ToArray();
     }
 
-    private void SetColor(Mesh mesh, List<UnityEngine.Color> heightColors)
+    private void SetColor(Mesh mesh, List<UnityEngine.Color> heightColors, float midHeight, float highHeight)
     {
         List<Color> colors = new();
-        for (int i = 0; i < vertList.Count(); i++)
+        for (int i = 0; i < vertList.Count; i++)
         {
-            if (vertList[i].y < 3)
+            if (vertList[i].y < midHeight)
             {
                 colors.Add(heightColors[0]);
             }
-            else if (vertList[i].y > 3 && vertList[i].y < 6)
+            else if (vertList[i].y >= midHeight && vertList[i].y < highHeight)
             {
                 colors.Add(heightColors[1]);
             }
@@ -121,7 +120,7 @@ public class Terrain
 
     private void ApplyElevation(Texture2D noiseMap, float height, bool randomTerrain, float noiseSizeDenominator, Vector2 noisePosition)
     {
-        int vertWidth = (int)Mathf.Sqrt(vertList.Count());
+        int vertWidth = (int)Mathf.Sqrt(vertList.Count);
         float pixelColor;
 
         for (int i = 0; i < vertWidth; i++)
@@ -132,8 +131,7 @@ public class Terrain
                 float v = (float)i / (vertWidth - 1);
                 if (randomTerrain)
                 {
-                    pixelColor = Mathf.PerlinNoise(u, v);
-                }
+                    pixelColor = Mathf.PerlinNoise(u * noiseSizeDenominator, v * noiseSizeDenominator);                }
                 else
                 {
                     pixelColor = noiseMap.GetPixelBilinear(u, v).grayscale;
@@ -147,7 +145,7 @@ public class Terrain
 
     private int CoordinateToVert(int y, int x)
     {
-        int vertWidth = (int)Mathf.Sqrt(vertList.Count());
+        int vertWidth = (int)Mathf.Sqrt(vertList.Count);
         return x + (y * vertWidth);
     }
 }
